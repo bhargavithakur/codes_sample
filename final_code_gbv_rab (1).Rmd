@@ -34,6 +34,9 @@ library(gridExtra)
 ```{r}
 
 #Importing and subsetting 2018 data
+https://drive.google.com/file/d/1bVcCf94XZqMSsQcvbp7fd9Nlk8_dc3vt/view?usp=share_link
+
+
 data_gbv_18 <- read_sas("/Users/bhargavithakur/Desktop/heartlan_alliance_ADF/gbv/hcs2018_datalim_flynn_mogbv.sas7bdat")
 use_data_gbv_18 <- data_gbv_18 %>% 
   select( "qk1"  , "qz3" , "safety" , "qm1" , "qs1" , "qs2" , "qs3" , "qs4" , "qs5" , "qs6" , "qs7" , "qs8" , "qaa5" , 'qaa11' , 'qaa12_1' , 'qaa12_2' , 'qhc1' , 'qhc3_1' , 'qcyh20' )
@@ -43,6 +46,8 @@ use_data_gbv_18 <- use_data_gbv_18 %>%
   filter(qk1 == 1 | qk1 == 2)
 
 #Importing and subsetting 2020 data
+https://drive.google.com/file/d/14sLZcwLHe8XGhNvOo2LtPGthzylMYCrf/view?usp=sharing
+
 data_gbv_20 <- read_sas("/Users/bhargavithakur/Desktop/heartlan_alliance_ADF/gbv/hcs2020_limit_flynn_mogbv.sas7bdat")
 use_data_gbv_20 <- data_gbv_20 %>% 
   select( "qk1" , "qk1_orig" , "qz3" , "safety" , "qm1" , "q22" , "qs1" , "qs2" , "qs3" , "qs4" , "qs5" , "qs6" , "qs7" , "qs8" , "q43" , "qaa5"  , "q65" , "q66" , "q67" , "q68" , "q69c" , "q69d" , "q69f" , "q95c" , "q95e" , "qcyh20")

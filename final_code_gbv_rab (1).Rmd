@@ -1,0 +1,335 @@
+---
+title: "code_gbv_UN_Women_RAB"
+output:
+  word_document: default
+  html_document: default
+date: "2022-10-18"
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+summary(cars)
+library(SAScii)
+library(tidyverse)
+require(haven)
+#install.packages("reshape")
+library(reshape)
+#install.packages(c("fastDummies", "recipes"))
+library(fastDummies)
+#install.packages('xlsx')     
+library(gridExtra)
+```
+
+
+
+```{r}
+
+#Importing and subsetting 2018 data
+data_gbv_18 <- read_sas("/Users/bhargavithakur/Desktop/heartlan_alliance_ADF/gbv/hcs2018_datalim_flynn_mogbv.sas7bdat")
+use_data_gbv_18 <- data_gbv_18 %>% 
+  select( "qk1"  , "qz3" , "safety" , "qm1" , "qs1" , "qs2" , "qs3" , "qs4" , "qs5" , "qs6" , "qs7" , "qs8" , "qaa5" , 'qaa11' , 'qaa12_1' , 'qaa12_2' , 'qhc1' , 'qhc3_1' , 'qcyh20' )
+#changing NA Values to 0
+use_data_gbv_18[is.na(use_data_gbv_18)] <- 0
+use_data_gbv_18 <- use_data_gbv_18 %>%
+  filter(qk1 == 1 | qk1 == 2)
+
+#Importing and subsetting 2020 data
+data_gbv_20 <- read_sas("/Users/bhargavithakur/Desktop/heartlan_alliance_ADF/gbv/hcs2020_limit_flynn_mogbv.sas7bdat")
+use_data_gbv_20 <- data_gbv_20 %>% 
+  select( "qk1" , "qk1_orig" , "qz3" , "safety" , "qm1" , "q22" , "qs1" , "qs2" , "qs3" , "qs4" , "qs5" , "qs6" , "qs7" , "qs8" , "q43" , "qaa5"  , "q65" , "q66" , "q67" , "q68" , "q69c" , "q69d" , "q69f" , "q95c" , "q95e" , "qcyh20")
+#changing NA Values to 0
+use_data_gbv_20[is.na(use_data_gbv_20)] <- 0
+#restricting to male and female populations 
+use_data_gbv_20 <- use_data_gbv_20 %>%
+  filter(qk1 == 1 | qk1 == 2)
+
+#Importing and subsetting 2021 data
+data_gbv_21 <- read_sas("/Users/bhargavithakur/Desktop/heartlan_alliance_ADF/gbv/hcs20_21_limited_flynn_mogbv.sas7bdat")
+#Selecting relevant columns based on useful variables 
+use_data_gbv_21 <- data_gbv_21 %>% 
+  select( "qk1" , "qk1_orig" , "caseid" , "ca_id"  , "survey_year" , "qz3" , "safety" , "qm1" , "q22" , "qs1" , "qs2" , "qs3" , "qs4" , "qs5" , "qs6" , "qs7" , "qs8" , "q43" , "qaa5" , "q64" , "q65" , "q66" , "q67" , "q68" , "q69c" , "q69d" , "q69f" , "q95c" , "q95e" , "q99" , "qcyh20")
+#changing NA Values to 0
+use_data_gbv_21[is.na(use_data_gbv_21)] <- 0
+#restricting to male and female populations 
+use_data_gbv_21 <-  use_data_gbv_21 %>%
+  filter(qk1 == 1 | qk1 == 2)
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+
+#Merging datasets for 2018, 2020, 2021 for the variable qz3 
+
+joined_qz3 = merge(x = use_data_gbv_18_qz3 ,y =  use_data_gbv_20_qz3 ,  by = "qz3",all=TRUE)
+joined_qz3 = merge(x = joined_qz3,y =  use_data_gbv_21_qz3 ,  by = "qz3",all=TRUE)
+joined_qz3$qz3_new <- c( 'Yes, all of the time' , 'Yes, most of the time' , 'Sometimes' , 'No, mostly not' ) 
+joined_qz3<- joined_qz3 %>% select(- qz3)
+joined_qz3
+#subset for women and reshape for visualization
+qz3_female <-  joined_qz3 %>% 
+  select(starts_with('perc_female') , 'qz3_new')
+qz3_female
+qz3_female_melt <- melt(qz3_female[,c('qz3_new'  ,'perc_female_2018' ,'perc_female_2020','perc_female_2021' )],id.vars = 1)
+plot_safety_female <- ggplot(qz3_female_melt ,aes(x = factor(qz3_new , levels = c('Yes, all of the time' , 'Yes, most of the time' , 'Sometimes' , 'No, mostly not')) , y = value , label= scales::percent(value))) + geom_bar(aes(fill = variable), stat = "identity", position = "dodge" ) + geom_text(aes(label = scales::percent(value, accuracy = 0.1 ), 
+                  y = value, 
+                  group = variable),
+              position = position_dodge(width = 0.9),
+              vjust = -0.5 , size= 3)  +  ggtitle("Safety in Neighborhood as Experienced by Women between 2018-2021") + ylab("Percentage") +  theme(panel.background = element_blank()) + theme(axis.title=element_text(size= 10 )) + theme(text=element_text(size= 10 ,  face = "bold")) +  scale_y_continuous(labels = scales::percent) +  theme(axis.text.y=element_blank(),   axis.ticks.y=element_blank()) + scale_fill_manual(values=c("#A4CEBF", "#00639F", "#F0E4AA", "#3CB432", "#377E2D", "#E54C37") , name = "Years" , labels=c('2018' , '2020' , '2021')) +  theme(axis.title=element_blank())
+
+#subset for men and reshape for visualization
+qz3_male <-  joined_qz3 %>% 
+  select(starts_with('perc_male') , 'qz3_new')
+qz3_male_melt <- melt(qz3_male[,c('qz3_new'  ,'perc_male_2018' ,'perc_male_2020','perc_male_2021' )],id.vars = 1)
+plot_safety_male <- ggplot(qz3_male_melt ,aes(x = factor(qz3_new , levels = c('Yes, all of the time' , 'Yes, most of the time' , 'Sometimes' , 'No, mostly not')) , y = value , label= scales::percent(value))) + geom_bar(aes(fill = variable), stat = "identity", position = "dodge" ) + geom_text(aes(label = scales::percent(value, accuracy = 0.1 ), 
+                  y = value, 
+                  group = variable),
+              position = position_dodge(width = 0.9),
+              vjust = -0.5 , size= 3)  + ggtitle("Safety in Neighborhood as Experienced by Men between 2018-2021") +  ylab("Percentage") +  theme(panel.background = element_blank()) + theme(axis.title= element_text(size= 10)) + theme(text=element_text(size= 10 ,  face = "bold")) +  scale_y_continuous(labels = scales::percent)+ theme(axis.text.y=element_blank(),   axis.ticks.y=element_blank()) + scale_fill_manual(values=c("#A4CEBF", "#00639F", "#F0E4AA", "#3CB432", "#377E2D", "#E54C37") , name = "Years" , labels=c('2018' , '2020' , '2021')) +  theme(axis.title=element_blank())
+
+fig.show(plot_safety_male)
+fig.show(plot_safety_female) 
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent fig.showing of the R code that generated the plot.
+```{r}
+#Merge the datasets for the variable qaa5
+joined_neighbor_violence = merge(x = use_data_gbv_18_neighbor_violence  ,y =  use_data_gbv_20_neighbor_violence ,  by = "qaa5",all=TRUE)
+joined_neighbor_violence = merge(x = joined_neighbor_violence, y =  use_data_gbv_21_neighbor_violence ,  by = "qaa5",all=TRUE)
+joined_neighbor_violence  <- joined_neighbor_violence %>% filter(qaa5 != 0)
+joined_neighbor_violence$neighbor_violence_new <- c( 'Every day' , 'At least every week' , 'At least every month' , 'Every few months' , 'Once a year or so' ,  'Not at all')
+
+sum(joined_neighbor_violence$Perct_female.x)
+joined_neighbor_violence$Perct_female_2018  <- rep(1484, times = 6)
+sum(joined_neighbor_violence$Perct_female.y)
+joined_neighbor_violence$Perct_female_2020  <- rep(2794, times = 6)
+sum(joined_neighbor_violence$Perct_female)
+joined_neighbor_violence$Perct_female_2021  <- rep(5367, times = 6)
+
+sum(joined_neighbor_violence$Perct_male.x)
+joined_neighbor_violence$Perct_male_2018  <- rep(1232, times = 6)
+sum(joined_neighbor_violence$Perct_male.y)
+joined_neighbor_violence$Perct_male_2020  <- rep(1628, times = 6)
+sum(joined_neighbor_violence$Perct_male)
+joined_neighbor_violence$Perct_male_2021  <- rep(3207, times = 6)
+
+
+#Subset for Females and reshape for data viz 
+neighbor_violence_female <-  joined_neighbor_violence %>% 
+  select(starts_with('perc_female') , 'neighbor_violence_new' , starts_with('Perct_female') ) 
+
+neighbor_violence_female_melt <- melt(neighbor_violence_female[,c('neighbor_violence_new'  ,'perc_female_2018' ,'perc_female_2020','perc_female_2021')],id.vars = 1)
+
+plot_neighbor_violence_female  <- ggplot(neighbor_violence_female_melt ,aes(x = factor(neighbor_violence_new , levels = c( 'Every day' , 'At least every week' , 'At least every month' , 'Every few months' , 'Once a year or so' ,  'Not at all')), y = value , label= scales::percent(value))) + geom_bar(aes(fill = variable), stat = "identity", position = "dodge" ) + geom_text(aes(label = scales::percent(value, accuracy = 0.1 ), 
+                  y = value, 
+                  group = variable),
+              position = position_dodge(width = 0.9),
+              vjust = -0.5 , size= 3) + ggtitle("Extent of Violence as Experienced by Women between 2018-2021") +  ylab("Percentage") + theme(panel.background = element_blank())   +  scale_y_continuous(labels = scales::percent)+ theme(axis.text.y=element_blank(),   axis.ticks.y=element_blank()) + theme(axis.text.x = element_text(size = 8 , face = "bold") , axis.title =  element_blank()) + scale_fill_manual(values=c("#A4CEBF", "#00639F", "#F0E4AA", "#3CB432", "#377E2D", "#E54C37") , name = "Years And N = : " , labels=c('2018 , N = 1484 ' , '2020 , N = 2794' , '2021 , N = 5367')) + theme(legend.position="top") 
+fig.show(plot_neighbor_violence_female)
+```
+
+
+```{r}
+#Subset for males and reshape for data viz 
+
+sum(joined_neighbor_violence$Perct_male.x)
+joined_neighbor_violence$Perct_male_2018  <- rep(1232, times = 6)
+sum(joined_neighbor_violence$Perct_male.y)
+joined_neighbor_violence$Perct_male_2020  <- rep(1628, times = 6)
+sum(joined_neighbor_violence$Perct_male)
+joined_neighbor_violence$Perct_male_2021  <- rep(3207, times = 6)
+
+
+neighbor_violence_male <-  joined_neighbor_violence %>% 
+  select(starts_with('perc_male') , 'neighbor_violence_new')
+neighbor_violence_male_melt <- melt(neighbor_violence_male[,c('neighbor_violence_new'  ,'perc_male_2018' ,'perc_male_2020','perc_male_2021' )],id.vars = 1)
+plot_neighbor_violence_male  <- ggplot(neighbor_violence_male_melt ,aes(x = factor(neighbor_violence_new , levels = c( 'Every day' , 'At least every week' , 'At least every month' , 'Every few months' , 'Once a year or so' ,  'Not at all')), y = value , label= scales::percent(value))) + geom_bar(aes(fill = variable), stat = "identity", position = "dodge" ) + geom_text(aes(label = scales::percent(value, accuracy = 0.1 ), 
+                  y = value, 
+                  group = variable),
+              position = position_dodge(width = 0.9),
+              vjust = -0.5 , size= 3) + ggtitle("Extent of Violence as Experienced by Men between 2018-2021") +  ylab("Percentage") + theme(panel.background = element_blank())   +  scale_y_continuous(labels = scales::percent)+ theme(axis.text.y=element_blank(),   axis.ticks.y=element_blank()) + theme(axis.text.x = element_text(size = 8 , face = "bold") , axis.title =  element_blank()) + scale_fill_manual(values=c("#A4CEBF", "#00639F", "#F0E4AA", "#3CB432", "#377E2D", "#E54C37") , name = "Years And N = : " , labels=c('2018 , N = 1232 ' , '2020 , N = 1628' , '2021 , N = 3207')) + theme(legend.position="top") 
+plot_neighbor_violence_male
+fig.show(plot_neighbor_violence_male)
+fig.show(plot_neighbor_violence_female)
+
+```
+
+
+```{r}
+
+
+use_data_gbv_18_park_safety <- use_data_gbv_18 %>%
+  select(qaa11, qk1) %>%
+  filter(qaa11 != 0)  %>%
+  group_by(qaa11)  %>%
+  summarise(Perct_male = sum(qk1 == 1) , Perct_female = sum(qk1 == 2)) %>%
+  mutate(perc_male_2018 = Perct_male/sum(Perct_male) , perc_female_2018 = Perct_female/sum(Perct_female))
+use_data_gbv_18_park_safety 
+
+sum(use_data_gbv_18_park_safety$Perct_male)
+sum(use_data_gbv_18_park_safety$Perct_female)
+
+#Changing tibble to dataframe
+use_data_gbv_18_park_safety <- as.data.frame(use_data_gbv_18_park_safety )
+#Reshaping for data visualization
+use_data_gbv_18_park_safety_melt <- melt(use_data_gbv_18_park_safety[,c('qaa11' ,'perc_male_2018','perc_female_2018')],id.vars = 1)
+
+use_data_gbv_18_park_safety_melt$qaa11_new <- rep(c( 'Strongly Agree'  , 'Agree'  ,  'Disagree' ,   'Strongly Disagree' ) , times = 2)
+#view(use_data_gbv_18_park_safety_melt)
+use_data_gbv_18_park_safety_melt$variable <- factor(use_data_gbv_18_park_safety_melt$variable , levels = c("perc_male_2018" , "perc_female_2018"))
+
+use_data_gbv_18_park_safety_melt
+
+plot_park_safety_2018 <- ggplot(use_data_gbv_18_park_safety_melt ,aes(x = factor(qaa11_new , levels = c('Strongly Agree' , 'Agree'  , 'Disagree' , 'Strongly Disagree')), y = value , label= scales::percent(value))) + geom_bar(aes(fill = factor(variable , levels = c("perc_male_2018" , "perc_female_2018"))) , stat = "identity", position = "dodge" ) + geom_text(aes(label = scales::percent(value, accuracy = 0.1 ), 
+                  y = value,group = variable),position = position_dodge(width = 0.9),vjust = -0.5 , size= 3) +  theme(panel.background = element_blank()) + theme(axis.title=element_blank()) + theme(text=element_text(size= 10)) +  scale_y_continuous(labels = scales::percent)+ theme(axis.text.y=element_blank(),   axis.ticks.y=element_blank()) + theme(axis.text = element_text(size = 10 , face = "bold")) + scale_fill_manual(values=c("#A4CEBF", "#00639F", "#F0E4AA", "#3CB432", "#377E2D", "#E54C37") , name = "Gender , N: " , labels=c('Men, N = 181' , 'Women, N = 300'))  + ggtitle("Park Safety in 2018")  +  theme(legend.position="top") 
+
+fig.show(plot_park_safety_2018)
+```
+
+
+
+
+
+
+
+
+```{r}
+use_data_gbv_18_unsafe_reason <- use_data_gbv_18 %>%
+  select(qaa12_1, qk1) %>%
+    filter(qaa12_1 != 0) %>%
+  group_by(qaa12_1)  %>%
+  summarise(Perct_male = sum(qk1 == 1) , Perct_female = sum(qk1 == 2)) %>%
+  mutate(perc_male_2018 = Perct_male/sum(Perct_male) , perc_female_2018 = Perct_female/sum(Perct_female) )
+use_data_gbv_18_unsafe_reason <- as.data.frame(use_data_gbv_18_unsafe_reason )
+use_data_gbv_18_unsafe_reason
+
+
+sum(use_data_gbv_18_unsafe_reason$Perct_male)
+sum(use_data_gbv_18_unsafe_reason$Perct_female)
+
+
+#Reshaping for data visualization
+use_data_gbv_18_unsafe_reason_melt <- melt(use_data_gbv_18_unsafe_reason[,c('qaa12_1' ,'perc_male_2018','perc_female_2018')],id.vars = 1)
+##view(use_data_gbv_18_unsafe_reason_melt )
+use_data_gbv_18_unsafe_reason_melt$qaa12_1_new <- rep(c( 'Broken Glass or Trash on the Ground' , 'Playground Equipment is Broken or Unsafe'  , 'Traffic Around the Park is Unsafe' , 'Not Comfortable with the other People using the Park' , 'Crimes or Violent Activity Have Happened at the Park'), times = 2)
+plot_unsafe_reason_2018  <- ggplot(use_data_gbv_18_unsafe_reason_melt ,aes(x = factor(qaa12_1_new , levels = c( 'Broken Glass or Trash on the Ground' , 'Playground Equipment is Broken or Unsafe'  , 'Traffic Around the Park is Unsafe' , 'Not Comfortable with the other People using the Park' , 'Crimes or Violent Activity Have Happened at the Park')), y = value , label= scales::percent(value))) + geom_bar(aes(fill = factor(variable , levels = c("perc_male_2018" , "perc_female_2018"))) , stat = "identity", position = "dodge" ) + geom_text(aes(label = scales::percent(value, accuracy = 1 ), 
+                  y = value, 
+                  group = variable),
+              position = position_dodge(width = 0.9),
+              hjust = 2 , size= 3) + xlab("Men and Women describing why the feel unsafe in the Parks in 2018")  +  theme(panel.background = element_blank()) + theme(axis.title=element_blank() ) + theme(text=element_text(size= 9)) +  scale_y_continuous(labels = scales::percent)  +  scale_fill_manual(values=c("#A4CEBF", "#00639F", "#F0E4AA", "#3CB432", "#377E2D", "#E54C37") , name = "Gender , N:" , labels=c('Men, N = 6' , 'Women, N = 30'))  +  theme(axis.text.y = element_text(size = 8 , face = "bold")) +  theme(axis.text.x =element_blank(),   axis.ticks.x =element_blank() , axis.ticks.y =element_blank())  + ggtitle("Reason for Feeling Unsafe in Park in 2018") + coord_flip() + theme(legend.position="bottom")
+fig.show(plot_unsafe_reason_2018)
+
+```
+
+
+
+
+
+```{r}
+
+#1	A big problem
+#2	Somewhat of a problem
+#3	Not a problem
+#7	(VOL) Don't know/Not sure
+#9	(VOL) Refused
+
+use_data_gbv_18_gun_violence <- use_data_gbv_18 %>%
+  select(qcyh20, qk1) %>%
+    filter(qcyh20 == 1 | qcyh20 == 2 | qcyh20 == 3) %>%
+  group_by(qcyh20)  %>%
+  summarise(Perct_male = sum(qk1 == 1) , Perct_female = sum(qk1 == 2)) %>%
+  mutate(perc_male_2018 = Perct_male/sum(Perct_male) , perc_female_2018 = Perct_female/sum(Perct_female) )
+use_data_gbv_18_gun_violence <- as.data.frame(use_data_gbv_18_gun_violence)
+use_data_gbv_18_gun_violence
+sum(use_data_gbv_18_gun_violence$Perct_male)
+sum(use_data_gbv_18_gun_violence$Perct_female)
+
+use_data_gbv_20_gun_violence <- use_data_gbv_20 %>%
+  select(qcyh20, qk1) %>%
+    filter(qcyh20 == 1 | qcyh20 == 2 | qcyh20 == 3 ) %>%
+  group_by(qcyh20)  %>%
+  summarise(Perct_male = sum(qk1 == 1) , Perct_female = sum(qk1 == 2)) %>%
+  mutate(perc_male_2020 = Perct_male/sum(Perct_male) , perc_female_2020 = Perct_female/sum(Perct_female) )
+use_data_gbv_20_gun_violence <- as.data.frame(use_data_gbv_20_gun_violence)
+use_data_gbv_20_gun_violence
+
+sum(use_data_gbv_20_gun_violence$Perct_male)
+sum(use_data_gbv_20_gun_violence$Perct_female)
+
+
+
+use_data_gbv_21_gun_violence <- use_data_gbv_21 %>%
+  select(qcyh20, qk1) %>%
+    filter(qcyh20 == 1 | qcyh20 == 2 | qcyh20 == 3)  %>%
+  group_by(qcyh20)  %>%
+  summarise(Perct_male = sum(qk1 == 1) , Perct_female = sum(qk1 == 2)) %>%
+  mutate(perc_male_2021 = Perct_male/sum(Perct_male) , perc_female_2021 = Perct_female/sum(Perct_female) )
+use_data_gbv_21_gun_violence <- as.data.frame(use_data_gbv_21_gun_violence)
+
+sum(use_data_gbv_21_gun_violence$Perct_male)
+sum(use_data_gbv_21_gun_violence$Perct_female)
+
+#Merge the above data frames 
+joined_gun_violence = merge(x = use_data_gbv_18_gun_violence  ,y =  use_data_gbv_20_gun_violence ,  by = "qcyh20",all=TRUE)
+joined_gun_violence = merge(x = joined_gun_violence, y = use_data_gbv_21_gun_violence ,  by = "qcyh20",all=TRUE)
+joined_gun_violence
+
+
+
+joined_gun_violence$gun_violence_new <- c( 'A big problem' , 'Somewhat of a problem' , 'Not a problem' )
+joined_gun_violence<- joined_gun_violence %>% select( "gun_violence_new" , "perc_male_2018" ,  "perc_female_2018" , "perc_male_2020" ,  "perc_female_2020" , "perc_male_2021"  , "perc_female_2021" )
+#view(joined_gun_violence)
+
+#Subset for females, and reshape for visualization
+gun_violence_female <-  joined_gun_violence %>% 
+  select(starts_with('perc_female') , 'gun_violence_new')
+gun_violence_female_melt <- melt(gun_violence_female[,c('gun_violence_new'  ,'perc_female_2018' ,'perc_female_2020','perc_female_2021' )],id.vars = 1)
+
+plot_gun_violence_female  <- ggplot(gun_violence_female_melt ,aes(x = factor(gun_violence_new , levels = c( 'A big problem' , 'Somewhat of a problem' , 'Not a problem')), y = value , label= scales::percent(value))) + geom_bar(aes(fill = variable), stat = "identity", position = "dodge" ) + geom_text(aes(label = scales::percent(value, accuracy = 0.1 ), 
+                  y = value, 
+                  group = variable),
+              position = position_dodge(width = 0.9),
+              vjust = -0.5 , size= 3) + theme(panel.background = element_blank() , axis.text.x = element_text(size = 10 , face = "bold") , axis.title =element_blank()) +  scale_y_continuous(labels = scales::percent)+ theme(axis.text.y=element_blank(),   axis.ticks.y=element_blank()) + scale_fill_manual(values=c("#A4CEBF", "#00639F", "#F0E4AA", "#3CB432", "#377E2D", "#E54C37") , name = "Years , N:" , labels=c('2018 ,N = 490 ' , '2020 ,N: 2614' , '2021 ,N: 2614')) + ggtitle("Gun Violence a Problem for Children : Women Respondents ")
+fig.show(plot_gun_violence_female)
+
+#Subset for males, and reshape for visualization
+gun_violence_male <-  joined_gun_violence %>% 
+  select(starts_with('perc_male') , 'gun_violence_new')
+gun_violence_male_melt <- melt(gun_violence_male[,c('gun_violence_new'  ,'perc_male_2018' ,'perc_male_2020','perc_male_2021' )],id.vars = 1)
+
+plot_gun_violence_male  <- ggplot(gun_violence_male_melt ,aes(x = factor(gun_violence_new , levels = c( 'A big problem' , 'Somewhat of a problem' , 'Not a problem')), y = value , label= scales::percent(value)))  + geom_bar(aes(fill = variable), stat = "identity", position = "dodge" ) + geom_text(aes(label = scales::percent(value, accuracy = 0.1 ), 
+                  y = value, 
+                  group = variable),
+              position = position_dodge(width = 0.9),
+              vjust = -0.5 , size= 3)  +  theme(panel.background = element_blank() , axis.text.x = element_text(size = 10 , face = "bold") , axis.title =element_blank()) +  scale_y_continuous(labels = scales::percent)+ theme(axis.text.y=element_blank(),   axis.ticks.y=element_blank()) + scale_fill_manual(values=c("#A4CEBF", "#00639F", "#F0E4AA", "#3CB432", "#377E2D", "#E54C37") , name = "Years" , labels=c('2018 ,N: 243' , '2020 ,N: 1498' , '2021 ,N: 1498')) + ggtitle("Gun Violence a Problem for Children : Men Respondents ")
+fig.show(plot_gun_violence_male)
+
+```
+
+```{r}
+
+
+pdf("/Users/bhargavithakur/Desktop/heartlan_alliance_ADF/gbv/allyears_221018_BT.pdf")
+print(plot_gun_violence_male)
+print(plot_gun_violence_female)
+print(plot_safety_female)
+print(plot_safety_male)
+print(plot_neighbor_violence_female)
+print(plot_neighbor_violence_male)
+print(plot_park_safety_2018)
+print(plot_unsafe_reason_2018)
+dev.off() 
+```
+
